@@ -1,0 +1,24 @@
+@server=http://localhost:8080
+
+### Create a new regisetred user
+POST {{server}}/register HTTP/1.1
+content-type: application/json
+
+{
+    "username": "John Doe",
+    "email": "tonijas@jd.com"
+}
+
+### get image
+GET {{server}}/public/yCusQAGlfApbdtm.png HTTP/1.1
+
+
+
+### validate opt
+POST {{server}}/validate-otp HTTP/1.1
+content-type: application/json
+
+{
+    "otp": "223329",
+    "email": "tonijas@jd.com"
+}

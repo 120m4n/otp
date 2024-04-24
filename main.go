@@ -1,12 +1,11 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
+	"crypto/sha256"
+    "encoding/hex"
 
 	"github.com/gin-gonic/gin"
 	"github.com/skip2/go-qrcode"
@@ -15,38 +14,75 @@ import (
 
 type User struct {
 	Username string
+	Email    string
 	OTP      string
 	QRPath   string // Path to QR image
 }
 
 var users map[string]User
 
+type RegisterRequest struct {
+	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required"`
+}
+
+type RegisterResponse struct {
+	StatusCode int    `json:"status_code"`
+	QRURL      string `json:"qr_url"`
+}
+
+type ValidateOTPRequest struct {
+	OTP string `json:"otp" binding:"required"`
+	Email string `json:"email" binding:"required"`
+}
+
 func main() {
-	users = make(map[string]User)
+    users = make(map[string]User)
 
-	router := gin.Default()
+    router := gin.Default()
 
-	// Serve static files
-	router.Static("/public", "./public")
+    // Serve static files
+    router.Static("/public", "./public")
 
-	// Load HTML templates
-	router.LoadHTMLGlob("templates/*")
+    // Load HTML templates
+    router.LoadHTMLGlob("templates/*")
 
-	router.GET("/register", registerUser)
-	router.GET("/qr/:id", renderQR)
+	router.POST("/register", registerUser)
+    router.GET("/qr/:id", renderQR)
+    router.POST("/validate-otp", validateOTP) // New line
 
-	router.Run(":8080")
+    router.Run(":8080")
 }
 
 func registerUser(c *gin.Context) {
-	// Generate unique identifier
-	uniqueID := generateUniqueID()
+	var request RegisterRequest
+
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Generate unique identifier from email
+	uniqueID := generateUniqueID(request.Email)
+
+	// Check if user already exists
+	if user, exists := users[uniqueID]; exists {
+		// Create response with existing QR code path
+		response := RegisterResponse{
+			StatusCode: http.StatusOK,
+			QRURL:      "http://localhost:8080/public/" + user.QRPath,
+		}
+
+		// Return response
+		c.JSON(http.StatusOK, response)
+		return
+	}
 
 	// Generate OTP
 	otp := gotp.RandomSecret(16)
 
 	// Generate QR code URI
-	otpURI := gotp.NewDefaultTOTP(otp).ProvisioningUri("demoAccountName", "issuerName")
+	otpURI := gotp.NewDefaultTOTP(otp).ProvisioningUri(request.Email, "supervision")
 
 	// Save QR image to file
 	qrPath, err := saveQR(uniqueID, otpURI)
@@ -57,13 +93,20 @@ func registerUser(c *gin.Context) {
 
 	// Store user data
 	users[uniqueID] = User{
-		Username: c.Query("username"),
+		Username: request.Username,
+		Email:    request.Email,
 		OTP:      otp,
 		QRPath:   qrPath,
 	}
 
-	// Redirect user to template-rendering page
-	c.Redirect(http.StatusFound, "/qr/"+uniqueID)
+	// Create response
+	response := RegisterResponse{
+		StatusCode: http.StatusCreated,
+		QRURL:      "http://localhost:8080/public/" + uniqueID + ".png",
+	}
+
+	// Return response
+	c.JSON(http.StatusCreated, response)
 }
 
 func renderQR(c *gin.Context) {
@@ -81,33 +124,43 @@ func renderQR(c *gin.Context) {
 	c.HTML(http.StatusOK, "index.html", gin.H{"QRPath": "/public/" + qrPath})
 }
 
-func generateUniqueID() string {
-	// Generate a random byte slice with length 12
-	randomBytes := make([]byte, 12)
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		// Handle error
-		log.Fatal(err)
+func validateOTP(c *gin.Context) {
+	var requestBody ValidateOTPRequest
+
+	if err := c.BindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
-	// Encode the random byte slice to base64
-	encodedBytes := base64.StdEncoding.EncodeToString(randomBytes)
+	// Validate the OTP here. This is just a placeholder.
+	isValid := validateOTPFunction(requestBody.Email, requestBody.OTP)
 
-	// Remove special characters from the encoded string
-	uniqueID := ""
-	for _, c := range encodedBytes {
-		if c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' {
-			uniqueID += string(c)
-		}
+	if isValid {
+		c.JSON(http.StatusOK, gin.H{"status": "OTP is valid"})
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "OTP is invalid"})
 	}
-
-	// Trim the unique ID to length 16
-	if len(uniqueID) > 16 {
-		uniqueID = uniqueID[:16]
-	}
-
-	return uniqueID
 }
+
+func validateOTPFunction(email string, otp string) bool {
+	// Generate unique identifier from email
+	uniqueID := generateUniqueID(email)
+
+	// Look up user by unique identifier
+	user, exists := users[uniqueID]
+	if !exists {
+		return false
+	}
+
+	// Check if the OTP is valid
+	return gotp.NewDefaultTOTP(user.OTP).Now() == otp
+}
+
+func generateUniqueID(email string) string {
+    hash := sha256.Sum256([]byte(email))
+    return hex.EncodeToString(hash[:])
+}
+
 
 func saveQR(uniqueID, otpURI string) (string, error) {
 	// Create a new QR code
