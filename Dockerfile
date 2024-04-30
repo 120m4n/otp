@@ -73,9 +73,14 @@ COPY --from=build /bin/server /bin/
 COPY ./public /public
 COPY ./templates /templates
 
+# Copy the otp_users.db file
+COPY ./otp_users.db /otp_users.db
+
 # Switch to the root user to change the ownership of the /public directory
 USER root
 RUN chown -R appuser:appuser /public
+RUN chown -R appuser:appuser /templates
+RUN chown -R appuser:appuser /otp_users.db
 
 # Switch back to the appuser user
 USER appuser

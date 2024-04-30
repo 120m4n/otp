@@ -1,4 +1,5 @@
-@server=http://localhost:8080
+@server=http://localhost:8083
+@token=your-secret
 
 ### check health
 GET {{server}}/api/health HTTP/1.1
@@ -13,16 +14,31 @@ content-type: application/json
     "email": "test_2@email.com"
 }
 
+
 ### get image
-GET {{server}}/api/public/7559609691fe7859683d0ff697534365864facddd11c32d95730162889d19762.png HTTP/1.1
-
-
+GET {{server}}/api/qr/7559609691fe7859683d0ff697534365864facddd11c32d95730162889d19762 HTTP/1.1
 
 ### validate opt
 POST {{server}}/api/verify HTTP/1.1
 content-type: application/json
 
 {
-    "otp": "519088",
-    "email": "tonijas@jd.com"
+    "otp": "225170",
+    "email": "test_2@email.com"
+}
+
+
+### admin endpoint
+DELETE  {{server}}/admin/flush-one-time-use HTTP/1.1
+content-type: application/json
+Authorization: {{token}}
+
+### admin endpoint
+DELETE  {{server}}/admin/delete-otu HTTP/1.1
+content-type: application/json
+Authorization: {{token}}
+
+{
+    "username": "John Doe",
+    "email": "test_2@email.com"
 }
