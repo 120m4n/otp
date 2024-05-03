@@ -112,9 +112,10 @@ func main() {
 				Data:       time.Now().Unix(),
 			})
 		})
+		api.POST("/generate-uniqueid", codifyUser)
 		api.POST("/register", registerUser)
 		api.POST("/verify", validateOTP)
-		api.GET("/qr/:id", renderQR)
+		api.GET("/qr-2fa/:id", renderQR)
 	}
 
 	admin := router.Group("/admin")
@@ -190,6 +191,28 @@ func registerUser(c *gin.Context) {
 		Message:    "User registered successfully",
 		Data:     uniqueID,
 	})
+}
+
+func codifyUser(c *gin.Context) {
+	var request RegisterRequest
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Error:     "Bad Request",
+			Message:   err.Error(),
+		})
+		return
+	}
+	
+	uniqueID := generateUniqueID(request.Email)
+	// Return response
+	c.JSON(http.StatusOK, SuccessResponse{
+		StatusCode: http.StatusCreated,
+		Message:    "User codificate successfully",
+		Data:     uniqueID,
+	})
+
 }
 
 func renderQR(c *gin.Context) {

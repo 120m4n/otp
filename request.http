@@ -13,10 +13,17 @@ content-type: application/json
     "username": "John Doe",
     "email": "test_2@email.com"
 }
+###generate unique id
+POST {{server}}/api/generate-uniqueid HTTP/1.1
+content-type: application/json
 
+{
+    "username": "John Doe",
+    "email": "test_2@email.com"
+}
 
 ### get image
-GET {{server}}/api/qr/7559609691fe7859683d0ff697534365864facddd11c32d95730162889d19762 HTTP/1.1
+GET {{server}}/api/qr-2fa/7559609691fe7859683d0ff697534365864facddd11c32d95730162889d19762 HTTP/1.1
 
 ### validate opt
 POST {{server}}/api/verify HTTP/1.1

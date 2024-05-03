@@ -12,7 +12,6 @@
   >
     <div class="bg-white rounded-2xl shadow-xl max-w-80 xl:max-w-100">
       <div class="flex flex-col items-center p-6 gap-4">
-        <!-- <img class="w-100 rounded-2xl" src="{{.QRPath}}" alt="QR Code image" /> -->
         <div id="qrcode" class="w-100 rounded-2xl"></div>
         <div class="text-center p-2">
           <h1 class="font-bold text-xl mb-4">
@@ -22,10 +21,10 @@
             Escannea el codigo QR con tu aplicacion de autenticacion OTP para configurar tu cuenta.
           </p>
         </div>
-        <div class="container mx-auto mt-10 p-d-flex p-jc-center p-ai-center flex items-center justify-center">
+        <div class="container mx-auto mt-5 p-d-flex p-jc-center p-ai-center flex items-center justify-center">
           <img src="data:image/png;base64,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" 
           alt="advertencia">
-          <p class="text-center p-2 font-semibold text-xs text-purple-800">Esta pagina solo puede ser desplegada una unica vez.
+          <p class="text-center p-1 font-semibold text-xs text-purple-800">Esta pagina solo puede ser desplegada una unica vez.
             Valide la aplicacion de autenticacion antes de cerrar la pagina. </p>
         </div>
 
@@ -33,6 +32,10 @@
     </div>
     <script type="text/javascript">
       new QRCode(document.getElementById("qrcode"), "{{.otpURI}}");
+
+      setTimeout(function() {
+        document.getElementById("qrcode").innerHTML = "";
+      }, 30000); // 30000 milliseconds = 30 seconds
     </script>
   </body>
 </html>
