@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -51,6 +52,13 @@ type SuccessResponse struct {
 	Data       interface{} `json:"data,omitempty"`
 }
 
+type AuditLog struct {
+    Timestamp time.Time `json:"timestamp"`
+    Action    string    `json:"action"`
+    User      string    `json:"user"`
+    Data      string    `json:"data"`
+}
+
 var db *bbolt.DB
 var adminToken string
 
@@ -73,6 +81,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Create a bucket for audit logs if it doesn't exist
+	err = db.Update(func(tx *bbolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("AuditLogs"))
+		return err
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+
 
 	// Create a bucket for one-time-use if it doesn't exist
 	err = db.Update(func(tx *bbolt.Tx) error {
@@ -185,6 +204,9 @@ func registerUser(c *gin.Context) {
 		return
 	}
 
+    // Log the action
+    logAction("registerUser", request.Email, fmt.Sprintf("User %s registered with ID %s", request.Username, uniqueID))
+	
 	// Return response
 	c.JSON(http.StatusOK, SuccessResponse{
 		StatusCode: http.StatusCreated,
@@ -495,4 +517,30 @@ func deleteUser(c *gin.Context) {
 		Message:    "User deleted",
 		Data: 	 uniqueID,
 	})
+}
+
+func logAction(action, user, data string) error {
+    logEntry := AuditLog{
+        Timestamp: time.Now(),
+        Action:    action,
+        User:      user,
+        Data:      data,
+    }
+
+    logBytes, err := json.Marshal(logEntry)
+    if err != nil {
+        return err
+    }
+
+    return db.Update(func(tx *bbolt.Tx) error {
+        b := tx.Bucket([]byte("AuditLogs"))
+        id, _ := b.NextSequence()
+        return b.Put(itob(id), logBytes)
+    })
+}
+
+func itob(v uint64) []byte {
+    b := make([]byte, 8)
+    binary.BigEndian.PutUint64(b, v)
+    return b
 }
